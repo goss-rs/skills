@@ -25,6 +25,40 @@ The verbal part is not optional. A diagram without words leaves the reader doing
 - `references/sl-syntax.md` — full SL `$$` syntax (read when generating SL format)
 - `references/ascii-conventions.md` — ASCII conventions and format selection guide
 
+## Companion Scripts
+
+### `scripts/ascii_to_sgf.py` — Convert ASCII diagrams to SGF
+
+Extracts all Go diagrams from one or more markdown files and writes `.sgf` files.
+Supports dot-space notation, grid-box notation, SL `$$` blocks, and move sequences.
+
+```bash
+# Extract all diagrams from a lesson file
+python scripts/ascii_to_sgf.py lekcija.md
+
+# Process a whole directory
+python scripts/ascii_to_sgf.py kurikulum/ --out sgf_output/
+
+# Parse a diagram string directly (prints SGF to stdout)
+python scripts/ascii_to_sgf.py --text '. X .\nX . O\n. O .' --title "Ladder" --size 9
+
+# Override board size and add a problem comment
+python scripts/ascii_to_sgf.py --text '...' --size 9 --comment "Black to play. Capture the white group."
+```
+
+SGF coordinate convention: `[column_letter][row_letter]`, both starting at `a` = top-left.
+Board size is inferred from diagram dimensions (rounds up to nearest 5/7/9/13/19).
+Static stones → `AB`/`AW` setup properties. Numbered moves (1–9) → `;B[..]` / `;W[..]` nodes.
+
+### `scripts/sgf_check.py` — Verify SGF by rendering as ASCII
+
+Reads SGF files and prints their positions as ASCII boards for visual verification.
+
+```bash
+python scripts/sgf_check.py position.sgf
+python scripts/sgf_check.py sgf_output/
+```
+
 ## Format Selection
 
 | User context | Default format |
