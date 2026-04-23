@@ -1,0 +1,11 @@
+# Generated reference snapshots — rebuilt locally by sync_skill_knowledge.py
+go-lesson-plan/reference/full_corpus.md
+go-lesson-plan/reference/knowledge_catalog.json
+go-lesson-plan/reference/knowledge_map.md
+
+# Eval workspaces
+*-workspace/
+
+# OS
+.DS_Store
+Thumbs.db
