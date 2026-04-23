@@ -1,13 +1,18 @@
 """
-Sync go-lesson-plan skill knowledge artifacts from all markdown files in repo.
+Sync go-lesson-plan skill knowledge artifacts from all markdown files in a repo.
 
-Outputs:
-- .cursor/skills/go-lesson-plan/reference/knowledge_catalog.json
-- .cursor/skills/go-lesson-plan/reference/knowledge_map.md
-- .cursor/skills/go-lesson-plan/reference/full_corpus.md
+Usage:
+  python sync_skill_knowledge.py                   # uses CWD as repo root
+  python sync_skill_knowledge.py --repo-root /path/to/project
+
+Outputs (always written next to this script, in ../reference/):
+  knowledge_catalog.json
+  knowledge_map.md
+  full_corpus.md
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 from collections import defaultdict
@@ -16,15 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".cursor/plans", "generated"}
-DEFAULT_EXCLUDE_PREFIXES = [
-    # Temporary safety exclusion while this subtree is being stabilized.
-    "gemini_ideje/skolski_program/resursi/",
-]
-SELF_REFERENCE_PARTS = (
-    ".cursor/skills/go-lesson-plan/reference/full_corpus.md",
-    ".cursor/skills/go-lesson-plan/reference/knowledge_map.md",
-    ".cursor/skills/go-lesson-plan/reference/knowledge_catalog.json",
-)
+DEFAULT_EXCLUDE_PREFIXES: list[str] = []
 
 
 @dataclass
@@ -39,12 +36,14 @@ class Doc:
 
 
 def find_repo_root(start: Path) -> Path:
+    """Walk up from start looking for a .git dir that is NOT the skills repo itself."""
+    skills_git = (Path(__file__).resolve().parents[3] / ".git")
     current = start.resolve()
     for candidate in [current, *current.parents]:
-        if (candidate / ".git").exists():
+        git_dir = candidate / ".git"
+        if git_dir.exists() and git_dir != skills_git:
             return candidate
-    # fallback for this project layout
-    return current.parents[4]
+    return current
 
 
 def extract_h1(lines: list[str]) -> str:
@@ -72,8 +71,6 @@ def is_excluded(path: Path, root: Path) -> bool:
     if rel.startswith(".cursor/plans/"):
         return True
     if any(rel.startswith(prefix) for prefix in DEFAULT_EXCLUDE_PREFIXES):
-        return True
-    if any(rel == p for p in SELF_REFERENCE_PARTS):
         return True
     return False
 
@@ -159,18 +156,32 @@ def write_full_corpus(reference_dir: Path, docs: list[Doc]) -> None:
 
 
 def main() -> int:
-    script_path = Path(__file__).resolve()
-    repo_root = find_repo_root(script_path)
-    skill_root = repo_root / ".cursor" / "skills" / "go-lesson-plan"
-    reference_dir = skill_root / "reference"
+    parser = argparse.ArgumentParser(description="Sync go-lesson-plan knowledge artifacts.")
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help="Root of the project to index (default: CWD, or nearest git repo above CWD)",
+    )
+    args = parser.parse_args()
+
+    # Reference output always lives next to this script → ../reference/
+    reference_dir = Path(__file__).resolve().parent.parent / "reference"
     reference_dir.mkdir(parents=True, exist_ok=True)
+
+    # Project to index
+    if args.repo_root:
+        repo_root = args.repo_root.resolve()
+    else:
+        repo_root = find_repo_root(Path.cwd())
 
     docs = collect_docs(repo_root)
     write_catalog(reference_dir, docs)
     write_map(reference_dir, docs)
     write_full_corpus(reference_dir, docs)
 
-    print(f"Synced docs: {len(docs)}")
+    print(f"Repo indexed: {repo_root}")
+    print(f"Synced docs:  {len(docs)}")
     print(f"Wrote: {(reference_dir / 'knowledge_catalog.json').as_posix()}")
     print(f"Wrote: {(reference_dir / 'knowledge_map.md').as_posix()}")
     print(f"Wrote: {(reference_dir / 'full_corpus.md').as_posix()}")
